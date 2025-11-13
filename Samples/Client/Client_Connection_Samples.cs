@@ -490,6 +490,124 @@ m/XriWr/Cq4h/JfB7NTsezVslgkBaoU=
         }
     }
 
+
+
+    /*
+     * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     * !!! NEW SAMPLE ADDED TO TEST YOUR PRIVATE HIVEMQ CLOUD !!!
+     * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     *
+     * This is a new sample custom-built for you.
+     * It connects to a private HiveMQ Cloud broker using WebSockets, TLS, and credentials.
+     * It also subscribes to a topic and listens for messages.
+     */
+    public static async Task Connect_To_Private_HiveMQ_With_WebSockets()
+    {
+        // ---------------------------------------------------------------------------------
+        // TODO: !! REPLACE THESE WITH YOUR HIVEQM CLOUD DETAILS !!
+        //
+        // Find this in your HiveMQ "Connect" dashboard. 
+        // 1. Choose "WebSocket"
+        // 2. The Host will look like: "your-cluster-id.s1.eu.hivemq.cloud"
+        // 3. The Port will be: 8080
+        //
+        // So, clusterUrl should be: "your-cluster-id.s1.eu.hivemq.cloud:8080/mqtt"
+        //
+        //var clusterUrl = "70a1960deacd43f1807bfe830d8f25b3.s1.eu.hivemq.cloud:8080/mqtt";
+        // --- FINAL FIX ---
+        // Your screenshot confirms the correct port is 8884.
+        // The "Invalid URI scheme" error is because it was missing "wss://"
+        var clusterUrl = "wss://70a1960deacd43f1807bfe830d8f25b3.s1.eu.hivemq.cloud:8884/mqtt";
+        var username = "csharp_app";
+        var password = "xbpHy_QF3bG8kLe";
+        var topicToSubscribeTo = "#";
+
+        ///
+        /// private const string HIVEMQ_BROKER = "70a1960deacd43f1807bfe830d8f25b3.s1.eu.hivemq.cloud";
+        ///private const string HIVEMQ_USER = "csharp_app";
+        ///private const string HIVEMQ_PASSWORD = "xbpHy_QF3bG8kLe";
+        ///private const string DATALOGGER_TOPIC = "campbellsci/cr310/data";
+        /// 
+
+        // ---------------------------------------------------------------------------------
+
+        if (clusterUrl.Contains("YOUR_"))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("ERROR: Please open 'Client_Connection_Samples.cs' and");
+            Console.WriteLine("replace the placeholder values in the");
+            Console.WriteLine("'Connect_To_Private_HiveMQ_With_WebSockets' sample with your real credentials.");
+            Console.ResetColor();
+            return;
+        }
+
+        var mqttFactory = new MqttClientFactory();
+
+        using var mqttClient = mqttFactory.CreateMqttClient();
+
+        // Setup a message handler to see the messages as they arrive
+        mqttClient.ApplicationMessageReceivedAsync += e =>
+        {
+            Console.WriteLine("\n### RECEIVED APPLICATION MESSAGE ###");
+            Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
+            //Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment)}");
+            // FIX: Changed 'PayloadSegment' (which is for sending) to 'Payload' (which is for reading)
+            Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
+            Console.WriteLine($"+ QoS = {e.ApplicationMessage.QualityOfServiceLevel}");
+            Console.WriteLine($"+ Retain = {e.ApplicationMessage.Retain}");
+            Console.WriteLine();
+
+            return Task.CompletedTask;
+        };
+
+        // Build the options
+        var mqttClientOptions = new MqttClientOptionsBuilder()
+            .WithWebSocketServer(o => o.WithUri(clusterUrl))  // Use your WebSocket URL
+            .WithCredentials(username, password)           // Add your credentials
+            .WithTlsOptions(o => {}) // Enable TLS (for wss://) - HiveMQ Cloud requires this.
+            .Build();
+
+        // Connect
+        try
+        {
+            var connectResult = await mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("MQTT client connected successfully.");
+            Console.ResetColor();
+            connectResult.DumpToConsole();
+        }
+        catch (Exception e)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"ERROR connecting: {e.Message}");
+            Console.ResetColor();
+            return;
+        }
+        
+        // Subscribe to your test topic
+        var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder()
+            .WithTopicFilter(f => f.WithTopic(topicToSubscribeTo))
+            .Build();
+
+        var subscribeResult = await mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"MQTT client successfully subscribed to topic '{topicToSubscribeTo}'.");
+        Console.ResetColor();
+        subscribeResult.DumpToConsole();
+
+        Console.WriteLine("\nConnection successful. Client is listening.");
+        Console.WriteLine($"Go to your HiveMQ Cloud dashboard and publish a message to the topic '{topicToSubscribeTo}' to see it here.");
+        Console.WriteLine("\nPress Enter to disconnect and exit.");
+        Console.ReadLine();
+
+        // Disconnect
+        await mqttClient.DisconnectAsync();
+        Console.WriteLine("MQTT client disconnected.");
+    }
+
+
+
     sealed class SampleClientKerberosAuthenticationHandler : IMqttEnhancedAuthenticationHandler
     {
         public async Task HandleEnhancedAuthenticationAsync(MqttEnhancedAuthenticationEventArgs eventArgs)
@@ -519,4 +637,11 @@ m/XriWr/Cq4h/JfB7NTsezVslgkBaoU=
             await eventArgs.SendAsync(sendOptions, CancellationToken.None);
         }
     }
+
+
+     
+
+    //sealed class SampleClientKerberosAuthenticationHandler : IMqttEnhancedAuthenticationHandler
+
+
 }
