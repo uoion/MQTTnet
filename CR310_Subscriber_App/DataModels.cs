@@ -1,57 +1,41 @@
 using System;
-using System.Diagnostics.CodeAnalysis; // This is the new 'using' for the fix
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
+using System.Text.Json.Serialization; // We need this for JSON parsing
+using System.Collections.Generic;    // We need this for Lists
 
 namespace CR310_Subscriber_App
 {
-    /// <summary>
-    /// A C# record to hold the structured data parsed from an MQTT topic.
-    /// </summary>
+    // -------------------------------------------------------------------
+    // This is our existing class for parsing the TOPIC STRING
+    // -------------------------------------------------------------------
     public record DataloggerRecord
     {
-        // These properties are parsed from the topic string
         public string DataloggerModel { get; init; } = "Unknown";
         public string SerialNumber { get; init; } = "Unknown";
         public string TableName { get; init; } = "Unknown";
-
-        // This property is the raw message payload
         public string JsonPayload { get; init; } = string.Empty;
 
-        // This is a private "Regex" (Regular Expression) to parse the topic
-        // It looks for 5 parts: "cs/v1/data/[part1]/[part2]/[part3]/cj"
         private static readonly Regex TopicRegex = new(
-            @"^cs/v1/data/([^/]+)/([^/]+)/([^/]+)/cj$",
+            @"^cs/v1/metadata/([^/]+)/([^/]+)/([^/]+)/cj$",
             RegexOptions.Compiled);
 
-        /// <summary>
-        /// A "factory method" that attempts to create a new DataloggerRecord
-        /// by parsing the topic string.
-        /// </summary>
-        /// <param name="topic">The MQTT topic string</param>
-        /// <param name="payload">The raw message payload</param>
-        /// <param name="record">The output record if parsing is successful</param>
-        /// <returns>True if parsing was successful, false otherwise</returns>
-        //
-        // This is the FIX:
-        // We add the [MaybeNullWhen(false)] attribute.
-        // This tells the compiler that if the method returns 'false', 'record' MIGHT be null.
-        // But if it returns 'true', 'record' is NOT null.
-        // This satisfies the null-checker in Program.cs.
-        public static bool TryParse(string topic, string payload, 
+        public static bool TryParse(string topic, string payload,
             [MaybeNullWhen(false)] out DataloggerRecord? record)
         {
-            var match = TopicRegex.Match(topic);
-
+            // --- FIX FOR REAL DATA ---
+            // Our old regex was wrong. It expected "/cj" at the end.
+            // The real topic 'cs/v1/data/cr300/22143/Table10Minute' does NOT have '/cj'.
+            // Let's create a new, correct regex.
+            const string dataTopicPattern = @"^cs/v1/metadata/([^/]+)/([^/]+)/([^/]+)$";
+            var match = Regex.Match(topic, dataTopicPattern, RegexOptions.Compiled);
+            
             if (!match.Success)
             {
-                // The topic was not in the expected format
                 record = null;
                 return false;
             }
 
-            // We have a match! Extract the parts.
-            // match.Groups[0] is the full string
-            // match.Groups[1] is the first captured group (...)
             record = new DataloggerRecord
             {
                 DataloggerModel = match.Groups[1].Value,
@@ -62,10 +46,83 @@ namespace CR310_Subscriber_App
             return true;
         }
 
-        // This makes it print nicely to the console
         public override string ToString()
         {
             return $"Model: {DataloggerModel}, Serial: {SerialNumber}, Table: {TableName}";
         }
+    }
+
+    // -------------------------------------------------------------------
+    // These are the NEW classes for parsing the JSON PAYLOAD
+    // -------------------------------------------------------------------
+
+    // This is the root JSON object
+    public class TableDataPayload
+    {
+        [JsonPropertyName("head")]
+        public Head? Head { get; set; }
+
+        [JsonPropertyName("data")]
+        public List<DataPoint>? Data { get; set; }
+    }
+
+    public class Head
+    {
+        [JsonPropertyName("transaction")]
+        public int Transaction { get; set; }
+
+        [JsonPropertyName("signature")]
+        public int Signature { get; set; }
+
+        [JsonPropertyName("environment")]
+        public Environment? Environment { get; set; }
+
+        [JsonPropertyName("fields")]
+        public List<Field>? Fields { get; set; }
+    }
+
+    public class Environment
+    {
+        [JsonPropertyName("station_name")]
+        public string? StationName { get; set; }
+
+        [JsonPropertyName("table_name")]
+        public string? TableName { get; set; }
+
+        [JsonPropertyName("model")]
+        public string? Model { get; set; }
+
+        [JsonPropertyName("serial_no")]
+        public string? SerialNo { get; set; }
+
+        [JsonPropertyName("os_version")]
+        public string? OsVersion { get; set; }
+
+        [JsonPropertyName("prog_name")]
+        public string? ProgName { get; set; }
+    }
+
+    public class Field
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
+        [JsonPropertyName("process")]
+        public string? Process { get; set; }
+
+        [JsonPropertyName("settable")]
+        public bool Settable { get; set; }
+    }
+
+    public class DataPoint
+    {
+        [JsonPropertyName("time")]
+        public DateTime Time { get; set; } // The parser will handle the string-to-DateTime conversion!
+
+        [JsonPropertyName("vals")]
+        public List<double>? Vals { get; set; } // The parser will handle the JSON array!
     }
 }
