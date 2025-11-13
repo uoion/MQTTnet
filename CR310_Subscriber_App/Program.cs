@@ -17,13 +17,12 @@ subscriber.MessageReceived += (topic, payload) =>
 {
     // Try to parse the TOPIC string
     if (DataloggerRecord.TryParse(topic, payload, out var record))
-    {
+     {
         Console.WriteLine($"\n--- NEW RECORD PARSED ---");
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine($"+ Topic Data: {record!}");
         Console.ResetColor();
 
-        // THIS IS THE NEW LOGIC:
         // Check what kind of record we parsed and handle it.
         switch (record!.Type)
         {
@@ -40,11 +39,13 @@ subscriber.MessageReceived += (topic, payload) =>
     }
     else
     {
-        // This will now catch all other topics like 'statusInfo', 'watchdogEvent', etc.
+        // THIS IS THE UPDATE (as you requested)
+        // We will now print the payload for all "Unknown" messages
+        // This helps us debug 'statusInfo', 'watchdogEvent', etc.
         Console.WriteLine($"\n--- Unknown Message Received ---");
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine($"+ Topic:   {topic}");
-        //Console.WriteLine($"+ Payload: {payload}"); // Still hidden to reduce spam
+        Console.WriteLine($"+ Payload: {payload}"); // This line is now active
         Console.ResetColor();
         Console.WriteLine("----------------------------------\n");
     }
@@ -126,6 +127,5 @@ static void HandleMetadataPayload(DataloggerRecord record, JsonSerializerOptions
         Console.WriteLine($"+ JSON Parse Error (Metadata): {ex.Message}");
         Console.ResetColor();
         Console.WriteLine($"+ Raw Payload: {record.JsonPayload}");
-    //all:
     }
 }

@@ -73,6 +73,7 @@ namespace CR310_Subscriber_App
 
     // -------------------------------------------------------------------
     // These are the classes for parsing the 'Data' JSON PAYLOAD
+    // (from your earlier log)
     // -------------------------------------------------------------------
     public class TableDataPayload
     {
@@ -91,9 +92,18 @@ namespace CR310_Subscriber_App
         [JsonPropertyName("signature")]
         public int Signature { get; set; }
         
-        // ... other properties can be added from your log ...
+        [JsonPropertyName("environment")]
+        public Environment? Environment { get; set; }
+
         [JsonPropertyName("fields")]
         public List<Field>? Fields { get; set; }
+    }
+
+    public class Environment
+    {
+        [JsonPropertyName("station_name")]
+        public string? StationName { get; set; }
+        // ... other properties ...
     }
 
     public class Field
@@ -121,7 +131,8 @@ namespace CR310_Subscriber_App
     }
 
     // -------------------------------------------------------------------
-    // These are the NEW classes for parsing the 'Metadata' JSON PAYLOAD
+    // These are the classes for parsing the 'Metadata' JSON PAYLOAD
+    // (the one you just captured)
     // -------------------------------------------------------------------
     public class MetadataPayload
     {
@@ -134,6 +145,7 @@ namespace CR310_Subscriber_App
         [JsonPropertyName("key")]
         public List<string>? Key { get; set; }
 
+        // This matches the {"BattV": [...], "AirTemp_C": [...]} structure
         [JsonPropertyName("definitions")]
         public Dictionary<string, List<object>>? Definitions { get; set; }
     }
