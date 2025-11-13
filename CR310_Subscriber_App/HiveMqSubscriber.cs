@@ -26,7 +26,8 @@ namespace CR310_Subscriber_App
         private const string Username = "csharp_app";
         // !! Remember to put your working password here !!
         private const string Password = "xbpHy_QF3bG8kLe"; 
-        private const string TopicToSubscribeTo = "#"; 
+        ///private const string TopicToSubscribeTo = "#"; 
+        private const string TopicToSubscribeTo = "cs/v1/#"; 
         // ------------------------------------
 
         public HiveMqSubscriber()

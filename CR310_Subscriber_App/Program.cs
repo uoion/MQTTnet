@@ -14,14 +14,34 @@ await using var subscriber = new HiveMqSubscriber();
 // This is where you tell the subscriber what to do when a message comes in.
 subscriber.MessageReceived += (topic, payload) =>
 {
-    // This code will run every time a message is received.
-    Console.WriteLine($"\n--- NEW MESSAGE RECEIVED ---");
-    Console.ForegroundColor = ConsoleColor.Cyan;
-    Console.WriteLine($"+ Topic:   {topic}");
-    Console.ForegroundColor = ConsoleColor.White;
-    Console.WriteLine($"+ Payload: {payload}");
-    Console.ResetColor();
-    Console.WriteLine("------------------------------\n");
+    // Try to parse the topic string into our new record
+    if (DataloggerRecord.TryParse(topic, payload, out var record))
+    {
+        // Success!
+        Console.WriteLine($"\n--- NEW RECORD PARSED ---");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        
+        // FIX 1: Add '!' to 'record'
+        Console.WriteLine($"+ Data:    {record!}"); // Uses the .ToString() method
+        Console.ForegroundColor = ConsoleColor.White;
+
+        // FIX 2: Add '!' to 'record' on this line as well
+        Console.WriteLine($"+ Payload: {record!.JsonPayload}");
+        Console.ResetColor();
+        Console.WriteLine("------------------------------\n");
+
+        // TODO: Next step is to parse the JsonPayload
+    }
+    else
+    {
+        // The topic didn't match our expected format.
+        Console.WriteLine($"\n--- Unknown Message Received ---");
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"+ Topic:   {topic}");
+        Console.WriteLine($"+ Payload: {payload}");
+        Console.ResetColor();
+        Console.WriteLine("----------------------------------\n");
+    }
 };
 
 try
