@@ -126,5 +126,6 @@ static void HandleMetadataPayload(DataloggerRecord record, JsonSerializerOptions
         Console.WriteLine($"+ JSON Parse Error (Metadata): {ex.Message}");
         Console.ResetColor();
         Console.WriteLine($"+ Raw Payload: {record.JsonPayload}");
+    //all:
     }
 }

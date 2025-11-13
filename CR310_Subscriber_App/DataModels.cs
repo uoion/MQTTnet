@@ -16,7 +16,7 @@ namespace CR310_Subscriber_App
 
     // -------------------------------------------------------------------
     // This class parses the TOPIC STRING
-    // --------------------------------_----------------------------------
+    // -------------------------------------------------------------------
     public record DataloggerRecord
     {
         public string DataloggerModel { get; init; } = "Unknown";
@@ -66,6 +66,7 @@ namespace CR310_Subscriber_App
 
         public override string ToString()
         {
+            // Now the topic type is printed in the log
             return $"[{Type}] Model: {DataloggerModel}, Serial: {SerialNumber}, Table: {TableName}";
         }
     }
@@ -86,7 +87,11 @@ namespace CR310_Subscriber_App
     {
         [JsonPropertyName("transaction")]
         public int Transaction { get; set; }
-        // ... other properties from your log ...
+        
+        [JsonPropertyName("signature")]
+        public int Signature { get; set; }
+        
+        // ... other properties can be added from your log ...
         [JsonPropertyName("fields")]
         public List<Field>? Fields { get; set; }
     }
@@ -95,7 +100,15 @@ namespace CR310_Subscriber_App
     {
         [JsonPropertyName("name")]
         public string? Name { get; set; }
-        // ... other properties ...
+        
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
+        [JsonPropertyName("process")]
+        public string? Process { get; set; }
+
+        [JsonPropertyName("settable")]
+        public bool Settable { get; set; }
     }
 
     public class DataPoint
