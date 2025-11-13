@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- FIX 1: 'net10.0' is not a valid framework. Changed to 'net8.0' -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    
+    <!-- FIX 2: This line directly disables the "underscore" warning -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MQTTnet" Version="5.0.1.1416" />
+  </ItemGroup>
+
+</Project>
