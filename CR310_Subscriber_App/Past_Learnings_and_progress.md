@@ -1,8 +1,27 @@
-see below 2 developments i did. The first development is where i started. When it did not want to work, i moved to the second development (where i got the MQTT samples to work and refactored it for my project). These 2 developements are the combined work i have done on this so far.
-I am currently working with development 2, but development 1 is important for the full context.
+# Project: CR310 Datalogger MQTT Subscriber
 
-Development 1:
-[[[[[
+**Goal:** To build a robust, standalone C# application that connects to a secure HiveMQ Cloud broker, subscribes to a datalogger's topics, and intelligently parses all incoming data.
+
+| Status | Task | Details & Learnings |
+| :--- | :--- | :--- |
+| **✅ Done** | **Phase 1: Initial Setup & Learning** | **Task:** Clone the `dotnet/MQTTnet` repository and understand how to use it. <br/> **Learnings:** We discovered we can't just "run" a `.cs` file. The project must be built and run. We learned to use VSCode's terminal and `dotnet` commands. |
+| **✅ Done** | **Phase 2: Running Samples** | **Task:** Successfully run a sample from the cloned repository. <br/> **Learnings:** Discovered the interactive `dotnet run` menu in the `Samples/` folder. This is the *correct* way to run samples, not by manually editing `Program.cs` as we first thought. |
+| **✅ Done** | **Phase 3: Public Broker Test** | **Task:** Connect to a public, unsecured broker (`broker.hivemq.com`). <br/> **Learnings:** Ran `Client_Subscribe_Samples.Handle_Received_Application_Message`. This confirmed our basic understanding of MQTT `Subscribe` and `Publish` was correct. |
+| **✅ Done** | **Phase 4: Private Broker Test (WSS)** | **Task:** Connect to our *private*, secure HiveMQ Cloud broker. <br/> **Details:** This was our first major custom code. We had to create a new sample in `Client_Connection_Samples.cs` to handle WebSocket Secure (WSS), TLS, and user credentials. <br/> **Learnings (Critical):** <br/> 1. `UriFormatException`: The WebSocket URL *must* start with `wss://`. <br/> 2. We debugged the correct port from your screenshot (`8884`). <br/> 3. `ReasonString: "unknown authentication key..."`: This error means the `username` or `password` is wrong. We fixed it and got a successful connection. |
+| **✅ Done** | **Phase 5: Refactor to Standalone App** | **Task:** Create the `CR310_Subscriber_App` as a new, standalone console application. <br/> **Details:** We moved our logic from the `Samples` folder into a clean project (`dotnet new console`). We created `HiveMqSubscriber.cs` to hold connection logic and `Program.cs` to run it. |
+| **✅ Done** | **Phase 6: The "Gotcha" Debugging** | **Task:** Debug the numerous, painful build errors in the new app. <br/> **Learnings (This was the hardest part):** <br/> **1. API Mismatch:** The `Samples` project (uses source code) has a different API than the `NuGet v5` package. This was the root cause of all our build errors. (`MqttFactory` vs `MqttClientFactory`, missing `MQTTnet.Client` namespace, etc.). <br/> **2. `.csproj` Errors:** The new project had an *invalid* `TargetFramework` (`net10.0`). We fixed it to `net8.0`. <br/> **3. `CA1707` Error:** The build failed due to underscores in the project name. We fixed this by adding `<NoWarn>CA1707</NoWarn>` to the `.csproj` file. <br/> **4. `CS8602` Null Error:** The compiler wouldn't trust our `TryParse`. We had to first try `[MaybeNullWhen(false)]` in `DataModels.cs`, and finally use the "blunt force" null-forgiving operator (`!`) in `Program.cs` (e.g., `record!`) to fix the build. |
+| **✅ Done** | **Phase 7: Intelligent Topic Parsing** | **Task:** Parse the incoming MQTT topic string. <br/> **Details:** We received real topics (e.g., `cs/v1/data/...` and `cs/v1/metadata/...`). <br/> **Learnings:** We discovered the datalogger sends *multiple* message types. We built `DataloggerRecord.TryParse` with a `Regex` for *each* topic type and added a `RecordType` enum to tag the messages. |
+| **✅ Done** | **Phase 8: Intelligent JSON Parsing** | **Task:** Parse the *two* different JSON payloads. <br/> **Details:** We created C# classes for both the `data` payload (`TableDataPayload`) and the `metadata` payload (`MetadataPayload`). We updated `Program.cs` with a `switch` statement to call the correct JSON parser (`HandleDataPayload` or `HandleMetadataPayload`) based on the `RecordType`. <br/> **Status:** This is now 100% functional. |
+| **✅ Done** | **Phase 9: Data Persistence** | **Task:** Save the parsed data to a local CSV file. <br/> **Details:** Implemented a new method `AppendToCsv` in `Program.cs`. This method is called from `HandleDataPayload` and appends the timestamp and sensor values to a `.csv` file. The file is created with a header if it does not exist. This provides a simple and effective way to store the data. |
+| **✅ Done** | **Phase 10: Finalization and Debugging** | **Task:** Resolved final build errors and warnings. <br/> **Details:** Fixed ambiguous reference errors (`CS0104`) by using fully qualified names (e.g., `System.Environment`). Addressed and fixed compiler warnings `CA1805`, `CA1852`, and `CS1004` to ensure a clean, production-ready build. |
+| **🗓️ To Do** | **Phase 11: Package and Deploy** | **Task:** Package the application as a Windows Service and enhance error logging. |
+
+---
+
+## Legacy Development (Development 1)
+
+This section contains the history of the first development attempt. It is kept for context.
+
 # Kairo Project: CR310 MQTT Data Logger - Kanban Board
 
 ## [ 🚀 Backlog / To Do ]
@@ -70,99 +89,3 @@ Development 1:
     * **V8:** Implemented TOA5 file conversion logic.
     * **V9:** Added raw JSON (`.jsonl`) backup logic.
     * **V10 (V12):** Upgraded client to `IManagedMqttClient` for self-healing and auto-reconnect.
-
-* **Project Artifacts (Mind Map & Configs)**
-    * This card contains the final, working configurations and project overview.
-    * ### 🗂️ Mind Map: Overall Project
-        ```text
-        📂 [Project: CR310 Kairo Logger]
-          │
-          ├── 1. 📡 [Hardware: Datalogger (Publisher)]
-          │    ├── Device: Campbell Scientific CR310
-          │    ├── Config: MQTTS (Native TLS)
-          │    ├── Port: 8883
-          │    ├── Credentials: "hivemq_cr310"
-          │    └── Topic (Base): "cs/v1/"
-          │
-          ├── 2. ☁️ [Broker: The "Cloud" Post Office]
-          │    ├── Service: HiveMQ Cloud (Serverless)
-          │    ├── MQTTS Endpoint: ...:8883 (For the CR310)
-          │    └── WSS Endpoint: ...:8884/mqtt (For the C# App)
-          │
-          └── 3. 💻 [Receiver: C# Console App (Subscriber)]
-               ├── Application: "MqttLogger" (Program.cs)
-               ├── Library: MQTTnet (using the ManagedMqttClient)
-               ├── Behavior: Self-healing & automatic reconnect
-               ├── Connection: WSS (Secure WebSocket)
-               ├── Port: 8884
-               ├── Credentials: "mqttbox_cr310"
-               ├── Subscribed Topic: "cs/v1/data/..."
-               │
-               └── ➡️ [Outputs (Written to C:\Kairo)]
-                    ├── 1. Backup File: "cr310_raw.jsonl"
-                    │    └── Purpose: Raw, unchanged JSON for safety.
-                    │
-                    └── 2. Processed File: "cr310_data.dat"
-                         └── Purpose: Formatted as TOA5 (4-line header + data).
-        ```
-    * ### ⚙️ Final Config: Datalogger (CR310)
-        ```ini
-        [Network_Services_Tab]
-        MQTT_Enable = Enabled
-        Enable_with_TLS = Enabled
-        MQTT_State = Publishing
-        MQTT_Broker_URL = 70a1960deacd43f1807bfe830d8f25b3.s1.eu.hivemq.cloud
-        Port_No = 8883
-        MQTT_Connection = Persistent
-        MQTT_Client_ID = Datalogger_Client_001
-        MQTT_User_Name = hivemq_cr310
-        MQTT_Password = [Your-Password-For-hivemq_cr310]
-        MQTT_Base_Topic = cs/v1/
-
-        [TLS_Tab]
-        Max_TLS_Server_Connections = 1
-        ```
-    * ### ⚙️ Final Config: C# App (Program.cs)
-        ```csharp
-        // --- 1. CONFIGURATION ---
-        string webSocketUrl = "70a1960deacd43f1807bfe830d8f25b3.s1.eu.hivemq.cloud:8884/mqtt";
-        string username = "mqttbox_cr310"; // Using the WSS credentials
-        string password = "YOUR_PASSWORD_HERE"; 
-        string clientID = "CSharp_ManagedLogger_01";
-        string topic = "cs/v1/data/cr310/22143/Table10Minute/cj";
-        string outputFile = @"C:\Kairo\cr310_data.dat";
-        string rawOutputFile = @"C:\Kairo\cr310_raw.jsonl";
-        ```
-
----
-
-## [ 🧠 Learnings / Key Insights ]
-
-* **CR310 `MQTT State` is Ground Truth:** This read-only variable on the `Network Services` tab is the *only* reliable way to debug the logger's connection. "Publishing" is success; "Connection retry wait" is failure.
-* **CR310 `Max TLS Server Connections`:** This setting on the `TLS` tab **MUST** be `> 0` or all secure connections will fail. This was our first major breakthrough.
-* **Protocol Mismatch (Firewalls):** Port `8883` (MQTTS) is a raw TCP protocol and is often blocked by corporate firewalls. Port `8884` (WSS / Secure WebSocket) mimics HTTPS traffic and is almost always open.
-* **Hardware vs. Software Clients:** The CR310 *must* use MQTTS (port 8883). The PC-based C# app *must* use WSS (port 8884) to get around the firewall.
-* **Separate Credentials:** It is best practice to create unique credentials for each client (e.g., `hivemq_cr310` for the logger, `mqttbox_cr310` for the app). This improves security and debugging.
-* **C# `dotnet add package` is > PowerShell:** Manually managing .NET DLLs in PowerShell is a nightmare of security (`Unblock-File`), dependencies (`LoaderExceptions`), and framework versions (`net48` vs `net8`). The `dotnet add package` command solves all these problems automatically.
-* **`IManagedMqttClient` is Essential:** For any real-world application, the "managed" client is the correct choice. It provides robust, built-in self-healing, auto-reconnect, and auto-resubscribe logic that we would otherwise have to write ourselves.
-]]]]]
-
-
-Development 2:
-[[[[[
-# Project: CR310 Datalogger MQTT Subscriber
-
-**Goal:** To build a robust, standalone C# application that connects to a secure HiveMQ Cloud broker, subscribes to a datalogger's topics, and intelligently parses all incoming data.
-
-| Status | Task | Details & Learnings |
-| :--- | :--- | :--- |
-| **✅ Done** | **Phase 1: Initial Setup & Learning** | **Task:** Clone the `dotnet/MQTTnet` repository and understand how to use it. <br/> **Learnings:** We discovered we can't just "run" a `.cs` file. The project must be built and run. We learned to use VSCode's terminal and `dotnet` commands. |
-| **✅ Done** | **Phase 2: Running Samples** | **Task:** Successfully run a sample from the cloned repository. <br/> **Learnings:** Discovered the interactive `dotnet run` menu in the `Samples/` folder. This is the *correct* way to run samples, not by manually editing `Program.cs` as we first thought. |
-| **✅ Done** | **Phase 3: Public Broker Test** | **Task:** Connect to a public, unsecured broker (`broker.hivemq.com`). <br/> **Learnings:** Ran `Client_Subscribe_Samples.Handle_Received_Application_Message`. This confirmed our basic understanding of MQTT `Subscribe` and `Publish` was correct. |
-| **✅ Done** | **Phase 4: Private Broker Test (WSS)** | **Task:** Connect to our *private*, secure HiveMQ Cloud broker. <br/> **Details:** This was our first major custom code. We had to create a new sample in `Client_Connection_Samples.cs` to handle WebSocket Secure (WSS), TLS, and user credentials. <br/> **Learnings (Critical):** <br/> 1. `UriFormatException`: The WebSocket URL *must* start with `wss://`. <br/> 2. We debugged the correct port from your screenshot (`8884`). <br/> 3. `ReasonString: "unknown authentication key..."`: This error means the `username` or `password` is wrong. We fixed it and got a successful connection. |
-| **✅ Done** | **Phase 5: Refactor to Standalone App** | **Task:** Create the `CR310_Subscriber_App` as a new, standalone console application. <br/> **Details:** We moved our logic from the `Samples` folder into a clean project (`dotnet new console`). We created `HiveMqSubscriber.cs` to hold connection logic and `Program.cs` to run it. |
-| **✅ Done** | **Phase 6: The "Gotcha" Debugging** | **Task:** Debug the numerous, painful build errors in the new app. <br/> **Learnings (This was the hardest part):** <br/> **1. API Mismatch:** The `Samples` project (uses source code) has a different API than the `NuGet v5` package. This was the root cause of all our build errors. (`MqttFactory` vs `MqttClientFactory`, missing `MQTTnet.Client` namespace, etc.). <br/> **2. `.csproj` Errors:** The new project had an *invalid* `TargetFramework` (`net10.0`). We fixed it to `net8.0`. <br/> **3. `CA1707` Error:** The build failed due to underscores in the project name. We fixed this by adding `<NoWarn>CA1707</NoWarn>` to the `.csproj` file. <br/> **4. `CS8602` Null Error:** The compiler wouldn't trust our `TryParse`. We had to first try `[MaybeNullWhen(false)]` in `DataModels.cs`, and finally use the "blunt force" null-forgiving operator (`!`) in `Program.cs` (e.g., `record!`) to fix the build. |
-| **✅ Done** | **Phase 7: Intelligent Topic Parsing** | **Task:** Parse the incoming MQTT topic string. <br/> **Details:** We received real topics (e.g., `cs/v1/data/...` and `cs/v1/metadata/...`). <br/> **Learnings:** We discovered the datalogger sends *multiple* message types. We built `DataloggerRecord.TryParse` with a `Regex` for *each* topic type and added a `RecordType` enum to tag the messages. |
-| **✅ Done** | **Phase 8: Intelligent JSON Parsing** | **Task:** Parse the *two* different JSON payloads. <br/> **Details:** We created C# classes for both the `data` payload (`TableDataPayload`) and the `metadata` payload (`MetadataPayload`). We updated `Program.cs` with a `switch` statement to call the correct JSON parser (`HandleDataPayload` or `HandleMetadataPayload`) based on the `RecordType`. <br/> **Status:** This is now 100% functional, as proven by your last two terminal outputs. |
-| **🗓️ To Do** | **Phase 9: Final Feature - Data Persistence** | **Task:** Save the parsed data to a local database. <br/> **Details:** The app now parses the data perfectly, but just prints it to the console. The final step is to save it. <br/> **Plan:** <br/> 1. Add the `Microsoft.EntityFrameworkCore.Sqlite` NuGet package. <br/> 2. Create a new file, `DataloggerDbContext.cs`. <br/> 3. Define the database tables (e.g., a `DataReadings` table). <br/> 4. In `Program.cs`, inside the `HandleDataPayload` function, we will create an instance of our `DbContext` and save the new `DataPoint` to the SQLite database. |
-]]]]]
