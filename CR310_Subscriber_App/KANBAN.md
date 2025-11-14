@@ -1,0 +1,23 @@
+# Project Kanban Board: CR310 Datalogger Subscriber
+
+| To Do (What's Next) | In Progress (Actively Working On) | ✅ Done (Accomplished) |
+| :--- | :--- | :--- |
+| **1. Package App as a Windows Service:** <br/> • Research `dotnet` worker services to run the app in the background. | *Currently no items in progress.* | **Phase 1: Initial Setup & Broker Config:** <br/> • Created a free Serverless HiveMQ Cloud cluster. <br/> • Identified all critical connection parameters (Host, Ports 8883/8884). <br/> • Created unique user credentials for the datalogger and the app. |
+| **2. Enhance Error Logging:** <br/> • Integrate a library like Serilog to write all console output to a rolling log file. | | **Phase 2: Datalogger & Client Connection:** <br/> • **CR310:** Successfully configured the datalogger to connect via MQTTS on port 8883 after setting `Max TLS Server Connections` to `1`. <br/> • **PC Client:** Successfully connected to the broker via Secure WebSockets (WSS) on port 8884, bypassing potential firewall issues with port 8883. |
+| **3. Implement a "Dead Man's Switch":** <br/> • Add logic to send an alert if no message is received for a set period (e.g., > 1 hour). | | **Phase 3: C# Application Development:** <br/> • **Initial Proof of Concept:** Successfully ran MQTTnet samples to connect to both public and private brokers. <br/> • **Solved WSS Connection Issues:** Debugged and fixed `UriFormatException` (by adding `wss://`) and authentication errors. |
+| **4. Data Visualization:** <br/> • Explore tools to read the database for real-time graphing (e.g., Grafana). | | **Phase 4: Refactor to Standalone App:** <br/> • Created the new `CR310_Subscriber_App` project. <br/> • **Solved Critical Build Errors:** Corrected the `.csproj` `TargetFramework`, suppressed `CA1707` warnings, and resolved null-reference warnings (`CS8602`). <br/> • **Solved API Mismatch:** Adapted the code from the source-based samples to work with the official MQTTnet v5 NuGet package API. |
+| | | **Phase 5: Intelligent Data Processing:** <br/> • **Topic Parsing:** Implemented `DataloggerRecord.TryParse` with Regex to correctly identify both `data` and `metadata` topics. <br/> • **JSON Parsing:** Created specific C# model classes (`TableDataPayload`, `MetadataPayload`) to safely deserialize the two different JSON structures. <br/> • **Application Logic:** Implemented a `switch` statement in `Program.cs` to route parsed records to the correct handler. |
+| | | **Phase 6: Data Persistence:** <br/> • **Implement Data Persistence (CSV File):** Created a new method `AppendToCsv`. In `HandleDataPayload`, called this method to append the timestamp and sensor values to a `.csv` file. The file is created with a header if it does not exist. |
+| | | **Phase 7: Finalization and Debugging:** <br/> • **Resolved Build Errors:** Fixed ambiguous reference errors (`CS0104`) by using fully qualified names (e.g., `System.Environment`). Addressed and fixed compiler warnings `CA1805`, `CA1852`, and `CS1004` to ensure a clean, production-ready build. |
+
+---
+
+### 🧠 Key Learnings & Insights
+
+*   **Protocol Mismatch is Key:** The CR310 hardware client must use **MQTTS (port 8883)**, while the PC-based C# app must use **WSS (port 8884)** to ensure it works behind corporate firewalls.
+*   **CR310 Configuration is Specific:** The `MQTT State` on the `Network Services` tab is the ultimate source of truth for debugging. The `Max TLS Server Connections` setting on the `TLS` tab **must be > 0** for any secure connection to work.
+*   **NuGet vs. Source Code:** The API for the MQTTnet library consumed via the **NuGet package** can differ from the API used in the **source code samples**. This was the root cause of the most difficult build errors during refactoring.
+*   **C# `dotnet add package` is Superior:** Using the `dotnet` CLI to manage packages is far more robust and reliable than manually managing DLLs, as it automatically handles dependencies, security, and framework compatibility.
+*   **Separate Concerns:** Refactoring the application into `HiveMqSubscriber.cs` (connection), `dataModels.cs` (parsing), and `Program.cs` (logic) has made the code clean, robust, and easy to maintain.
+*   **CSV Persistence is Simple and Effective:** For this application's needs, appending data to a CSV file is a straightforward and robust method for data persistence. It avoids the complexity of setting up a database and is easily readable by other programs.
+*   **Namespace Conflicts:** When a class name conflicts with a system-level class (e.g., `Environment`), use the fully qualified name (e.g., `System.Environment`) to resolve the ambiguity.
